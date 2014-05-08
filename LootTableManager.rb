@@ -23,6 +23,15 @@ class DbManager
     end
   end
   
+  def import_exp_from_csv(filename)
+    file = File.new(filename, "r")
+    file.gets
+    while (line = file.gets)
+      a = line.split(',')
+      insert_to_exp_db(a[0], a[1], a[2])
+    end
+  end
+  
   def import_gems_from_csv(filename)
     file = File.new(filename, "r")
     file.gets
@@ -40,6 +49,20 @@ class DbManager
     rescue SQLite3::Exception => e
       puts "Exception #{e}"
     ensure
+      db.close if db
+    end
+  end
+  
+  def insert_to_exp_db(l, c, ex)
+    begin
+      db = SQLite3::Database.open "DNDTABLES.sqlite3"
+      cmd = db.prepare("INSERT INTO experience (level, cr, exp) VALUES (?,?,?)")
+      cmd.bind_params(l, c, ex)
+      cmd.execute()
+    rescue SQLite3::Exception => e
+      puts "Exception #{e}"
+    ensure
+      cmd.close if cmd
       db.close if db
     end
   end
@@ -84,6 +107,26 @@ class DbManager
     end
   end
   
+  def find_exp_from_db(level, cr)
+    begin
+      db = SQLite3::Database.open("DNDTABLES.sqlite3")
+      cmd = db.prepare("SELECT exp FROM experience WHERE level = ? and cr = ?")
+      cmd.bind_params(level, cr)
+      result = cmd.execute
+      a = result.next
+      if a != nil
+        return a[0]
+      else
+        return 0
+      end
+    rescue SQLite3::Exception => e
+      puts "Exception: #{e}"
+    ensure
+      cmd.close if cmd
+      db.close if db
+    end
+  end
+  
   def find_goods_from_db(table, roll)
     begin
       db = SQLite3::Database.open("DNDTABLES.sqlite3")
@@ -107,8 +150,11 @@ end
 
 def start
   manager = DbManager.new
-  manager.find_goods_from_db("art", 55)
-  manager.find_goods_from_db("gems", 25)
+  #manager.find_goods_from_db("art", 55)
+  #manager.find_goods_from_db("gems", 25)
+  puts manager.find_exp_from_db(1, 10)
+  puts manager.find_exp_from_db(20, 20)
+  #manager.import_exp_from_csv("dnd_exp.csv")
 end
 
 if __FILE__ == $0

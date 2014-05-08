@@ -10,6 +10,12 @@ class LootRoller
   SCALE = 5
   COINS = 6
   SUB = 7
+
+  def initialize(low_lev, high_lev, party_size)
+    @low = low_lev
+    @high = high_lev
+    @party_size = party_size
+  end
   
   def do_roll(die = 6)
     if die == 0
@@ -23,6 +29,7 @@ class LootRoller
     total_coin = Hash["platinum", 0, "gold", 0, "silver", 0, "copper", 0]
     all_items = Array.new
     all_goods = Array.new
+    total_exp = calc_exp(levels)
     levels.each do |level|
       roll = do_roll(100)
       coins = get_coin_roll(level, roll)
@@ -44,7 +51,7 @@ class LootRoller
     end
     puts "Total Coin: "
     total_coin.each do |val|
-      split_coin = val[1] / 8
+      split_coin = val[1] / @party_size
       puts "  #{val[1]} #{val[0]} coins\t-\t#{split_coin} each"
     end
     puts "Goods:"
@@ -55,6 +62,26 @@ class LootRoller
     all_items.each do |item|
       puts "  #{item}"
     end
+    puts "Experience:"
+    total_exp.each do |exp|
+      split_exp = exp[1] / @party_size
+      puts "  Level: #{exp[0]}, Exp: #{exp[1]}, at #{split_exp} each"
+    end
+    
+  end
+  
+  def calc_exp(levels)
+    total = Hash.new
+    for i in @low..@high
+      total[i] = 0
+    end
+    
+    levels.each do |cr|
+      for lev in @low..@high
+        total[lev] += get_exp(lev, cr)
+      end
+    end
+    return total
   end
   
   private
@@ -117,6 +144,11 @@ class LootRoller
     return list[Random.rand(list.length)]
   end
   
+  def get_exp(level, cr)
+    manager = DbManager.new
+    return Integer(manager.find_exp_from_db(level, cr))
+  end
+  
   def display_roll(level, type, roll, low, hi, die, scale, coin_type, subtype, total)
     puts "======================================================"
     puts "Level: #{level}\ttype: #{type}\t#{roll}"
@@ -152,9 +184,15 @@ def build_list(input)
 end
 
 def start
-  roller = LootRoller.new
+  puts "Please enter lowest party level:"
+  low = Integer(gets.chomp)
+  puts "Please enter highest party level:"
+  high = Integer(gets.chomp)
+  puts "Please enter number of party members:"
+  p_size = Integer(gets.chomp)
+  roller = LootRoller.new(low, high, p_size)
   while true
-    puts "Please entere a challenge rating (or 'x' to exit):"
+    puts "Please enter a challenge rating (or 'x' to exit):"
     input = gets.chomp
     if(input == 'x' || input == 'X')
       exit
